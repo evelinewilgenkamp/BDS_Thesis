@@ -112,9 +112,39 @@ lLowRisk = ['beta_60m', 'beta_dimson_21d', 'betabab_1260d', 'betadown_252d',
 lMomentum = ['prc_highprc_252d', 'ret_3_1', 'ret_6_1', 'ret_9_1', 'ret_12_1', 
              'seas_1_1na']
 
-# Profit Growth (excluding)
+# Profit Growth (excluding dsale_dinv, dsale_drec, dsale_dsga, niq_at_chg1,
+# niq_be_chg1, niq_su, saleq_su)
+lProfGrow = ['ocf_at_chg1', 'ret_12_7', 'sale_emp_gr1', 'seas_1_1an', 
+             'tax_gr1a']
 
+# Profitability (excluding f_score, niq_be)
+lProfit = ['dolvol_var_126d', 'ebit_bev', 'ebit_sale', 'ni_be', 'o_score', 
+           'ocf_at', 'ope_be', 'ope_bel1', 'turnover_var_126d']
 
+# Quality (excluding dgp_dsale, ni_inc8q, niq_at, qmj, qmj_growth)
+lQuality = ['at_turnover', 'cop_at', 'cop_atl1', 'gp_at', 'gp_atl1',
+            'mispricing_perf', 'op_at', 'op_atl1', 'opex_at', 'qmj_prof', 
+            'qmj_safety', 'sale_bev']
+
+# Seasonality (excluding seas_16_20an, sti_gr1a)
+lSeason = ['corr_1260d', 'coskew_21d', 'dbnetis_at', 'kz_index', 'lti_gr1a', 
+           'pi_nix', 'seas_2_5an', 'seas_6_10an', 'seas_11_15an', 
+           'seas_11_15na']
+
+# Size (excluding rd_me)
+lSize = ['ami_126d', 'dolvol_126d', 'market_equity', 'prc']
+
+# Skewness/short-term reversal (excluding iskew_hxz4_21d)
+lSkewness = ['iskew_capm_21d', 'iskew_ff3_21d', 'ret_1_0', 'rmax5_rvol_21d', 
+             'rskew_21d']
+
+# Value (excluding eqnetis_at, eqnpo_me, eqpo_me, ival_me, netis_at)
+lValue = ['at_me', 'be_me', 'bev_mev', 'chcsho_12m', 'debt_me', 'div12m_me', 
+          'ebitda_mev', 'eq_dur', 'eqnpo_12m', 'fcf_me', 'ni_me', 'ocf_me',
+          'sale_me', 'intrinsic_value']
+
+lClusters = [lAccruals, lDebtIss, lInvest, lLowLev, lLowRisk, lMomentum, 
+             lProfGrow, lProfit, lQuality, lSeason, lSize, lSkewness, lValue]
 
 # Split up datasets into blocks, since merging makes frame too big
 dfChar['eom'] = pd.to_datetime(dfChar['eom'], format='%Y-%m-%d')
