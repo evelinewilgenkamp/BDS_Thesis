@@ -146,6 +146,30 @@ lValue = ['at_me', 'be_me', 'bev_mev', 'chcsho_12m', 'debt_me', 'div12m_me',
 lClusters = [lAccruals, lDebtIss, lInvest, lLowLev, lLowRisk, lMomentum, 
              lProfGrow, lProfit, lQuality, lSeason, lSize, lSkewness, lValue]
 
+lClusterNames = ['accruals', 'debt_iss', 'invest', 'low_lev', 'low_risk', 
+                 'momentum', 'prof_grow', 'profit', 'quality', 'season', 
+                 'size', 'skewness', 'value']
+
+# Compute cross-sectional rank each month
+for cluster in lClusters:
+    for feature in cluster:
+        dfChar[feature] = dfChar.groupby(['eom'])[feature].rank()
+        
+# Take average within-cluster rank
+i = 0
+for cluster in lClusters:
+    sName = lClusterNames[i]
+    dfChar[sName] = dfChar[cluster].mean(axis=1)
+    i = i+1
+
+# Standardize the clusters each month
+for cluster in lClusterNames:
+    dfChar[cluster] = dfChar.groupby('eom')[cluster].transform(
+        lambda x: (x - x.mean()) / x.std())
+    
+dfChar = dfChar[['id', 'eom'] + lClusterNames]
+
+
 # Split up datasets into blocks, since merging makes frame too big
 dfChar['eom'] = pd.to_datetime(dfChar['eom'], format='%Y-%m-%d')
 dfChar['mergemonth'] = dfChar['eom'].dt.month
