@@ -138,7 +138,7 @@ dfChar = dfChar[dfChar['missing_count'] < 58]
 dfChar['eom'] = pd.to_datetime(dfChar['eom'], format='%Y%m%d')
 dfChar['year'] = dfChar['eom'].dt.year
 dfChar = dfChar[dfChar['year'] <= 2020]
-dfChar = dfChar[dfChar['year'] >= 1952]
+dfChar = dfChar[dfChar['year'] >= 1942] # Need 10 years of data for cov matrix
 
 # Compute cross-sectional rank each month
 for feature in lFeatures:
