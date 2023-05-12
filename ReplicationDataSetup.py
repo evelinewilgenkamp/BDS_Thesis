@@ -134,7 +134,7 @@ dfChar.dropna(subset=['me_lag1'], inplace=True)
 dfChar['missing_count'] = dfChar[lFeatures].isnull().sum(axis=1)
 dfChar = dfChar[dfChar['missing_count'] < 58]
 
-# Sample time: 1952-2020
+# Sample time: 1952-2020 (need 10 extra years for cov matrix)
 dfChar['eom'] = pd.to_datetime(dfChar['eom'], format='%Y%m%d')
 dfChar['year'] = dfChar['eom'].dt.year
 dfChar = dfChar[dfChar['year'] <= 2020]

@@ -46,7 +46,7 @@ dfDaily = pd.read_csv('usa_daily_return.csv',
 dfDaily['date'] = pd.to_datetime(dfDaily['date'], format='%Y%m%d')
 dfDaily['year'] = dfDaily['date'].dt.year
 dfDaily = dfDaily[dfDaily['year'] <= 2020]
-dfDaily = dfDaily[dfDaily['year'] >= 1952]
+dfDaily = dfDaily[dfDaily['year'] >= 1942]
 
 # Characteristics frame
 dfChar = pd.read_csv('jensen2022_data.csv', 

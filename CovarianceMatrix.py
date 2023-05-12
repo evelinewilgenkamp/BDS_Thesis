@@ -119,11 +119,13 @@ def runDailyRegression(sDay, dfDay, lClusters, dfFacRet, dfResid):
     
     return dfFacRet, dfResid
     
+
+
 ###########################################################
 ### RUNNING REGRESSIONS
 # List of all relevant yearly frames to loop through
 lYearFrames = []
-for year in range(1942, 2021):
+for year in range(1950, 2021):
     lYearFrames.append(f'daily_frame_{year}.csv')
 
 # Loop through years
@@ -143,43 +145,15 @@ for yearFrame in lYearFrames:
                                                dfFacRet=dfFacRet, 
                                                dfResid=dfResid)
         
+# Export frames to prevent re-running
+dfFacRet.to_csv('latent_facret.csv', index=False)
+dfResid.to_csv('latent_resid.csv', index=False)        
     
 ###########################################################
 ### ESTIMATING (CO)VARIANCE MATRIX
-
-
-
-
-
-# Estimate latent factor returns
-# r = S*f + e
-# r: daily return
-# S: matrix with 1 (intercept) and 13 cluster characteristics
-
-
-
-# Computing S
-# Each cluster is the average rank of the characteristics in the cluster
-# Standardized as Z-score monthly
-
-
-
-# Each trading day, estimate the cross-sectional regression
-
-
-
-# Extract f hat
-
-
-
-# Extract e hat
-
-
-
-# Compute Var(fhat)
-# Exponentially weighted (based on decays) sample covariance matrix
-# Over past 10 years of daily observations
-
+### Compute Var_t(fhat_t+1)
+# Exponentially-weightdd 
+# pd.ewmstd(arg1=dffacret, halflife=)
 
 
 # Compute Var(ehat)
