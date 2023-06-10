@@ -154,7 +154,7 @@ dfResid.to_csv('latent_resid.csv', index=False)
 ### Compute Var_t(fhat_t+1)
 # Exponentially-weightdd 
 # pd.ewmstd(arg1=dffacret, halflife=)
-
+dfTestOut = dfFacRet.iloc[:2520, 1:].ewm(halflife=126).corr()
 
 # Compute Var(ehat)
 # Exponentially weighted (based on decays) moving acerage of squared residuals
