@@ -46,8 +46,7 @@ dTypes = {'size_grp':'category'}
 
 # Memory saving: drop unneccesary columns
 lDrop = ['obs_main', 'exch_main', 'primary_sec', 'excntry', 'curcd', 'fx',
-         'common', 'comp_tpci', 'crsp_shrcd', 'comp_exchg', 'crsp_exchcd',
-         'prc_local', 'ret_local',]
+         'common', 'comp_tpci', 'crsp_shrcd', 'prc_local', 'ret_local']
           
 dfChar = pd.read_csv('usa_char.csv', 
                      sep=',', 
@@ -55,11 +54,15 @@ dfChar = pd.read_csv('usa_char.csv',
                      low_memory=True,
                      dtype = dTypes,
                      usecols = lambda x: x not in lDrop)
+     
 
 ###########################################################
 ### DATA CLEANING AND PREPARATION
 # Marketcap above 50th percentile of NYSE
-dfChar = dfChar[(dfChar['size_grp'] == 'large') | (dfChar['size_grp'] == 'mega')]
+#dfChar = dfChar[(dfChar['size_grp'] == 'large') | (dfChar['size_grp'] == 'mega')]
+
+# Marketcap above 20th percentile of NYSE
+dfChar = dfChar[(dfChar['size_grp'] == 'small') | (dfChar['size_grp'] == 'large') | (dfChar['size_grp'] == 'mega')]
 
 # Select 115 stock characteristics from Jensen et al. 2022
 lKeep = ['id', 'date', 'eom', 'source_crsp', 'size_grp', 'gvkey', 'iid',
@@ -124,6 +127,7 @@ lFeatures = ['cowc_gr1a', 'oaccruals_at', 'oaccruals_ni', 'taccruals_at',
              'sale_me', 'seas_6_10na']
 
 # Lag features (prevent lookahead bias)
+dfChar.sort_values(by=['id', 'eom'], inplace=True)
 for feature in lFeatures:
     dfChar[feature] = dfChar.groupby('id')[feature].shift(1)
 
@@ -134,11 +138,11 @@ dfChar.dropna(subset=['me_lag1'], inplace=True)
 dfChar['missing_count'] = dfChar[lFeatures].isnull().sum(axis=1)
 dfChar = dfChar[dfChar['missing_count'] < 58]
 
-# Sample time: 1952-2020 (need 10 extra years for cov matrix)
+# Sample time
 dfChar['eom'] = pd.to_datetime(dfChar['eom'], format='%Y%m%d')
 dfChar['year'] = dfChar['eom'].dt.year
 dfChar = dfChar[dfChar['year'] <= 2020]
-dfChar = dfChar[dfChar['year'] >= 1942] # Need 10 years of data for cov matrix
+dfChar = dfChar[dfChar['year'] >= 1990]
 
 # Compute cross-sectional rank each month
 for feature in lFeatures:
@@ -147,16 +151,76 @@ for feature in lFeatures:
 # Map to [0,1] interval
 for feature in lFeatures:
     dfChar[feature] = dfChar.groupby(['eom'])[feature].transform(
-        lambda x: minmax_scale(x.astype(float)))
+        lambda x: minmax_scale(x.astype(float), feature_range=(-1, 1)))
 
 # Set missing values to 0.5
-dfChar[lFeatures] = dfChar[lFeatures].fillna(0.5)
+dfChar[lFeatures] = dfChar[lFeatures].fillna(0.0)
+
+# Keep only CRSP entries (to ensure permno merge)
+dfChar = dfChar[dfChar['source_crsp'] == 1]
 
 # Drop helper columns
 dfChar = dfChar.drop(columns=['year', 'missing_count'])
 
 # Export final dataset
-dfChar.to_csv('jensen2022_data.csv', index=False)
+dfChar.to_csv('fullsample_data_2.csv', index=False)
+
+
+###########################################################
+### NYSE only dataset (extended chars)
+# Select 154 stock characteristics from Replication crisis paper
+# Extract
+dfLabels = pd.read_csv('cluster_labels.csv', sep=',', index_col=False)
+dfLabels['char'] = dfLabels['characteristic,cluster'].str.split(',').str[0]
+dfLabels['cluster'] = dfLabels['characteristic,cluster'].str.split(',').str[1]
+dfLabels.sort_values(by='cluster', inplace=True)
+dfLabels.reset_index(inplace=True)
+lReplication = dfLabels['char'].values.tolist()
+lReplication.insert(64, 'rvol_252d')
+lKeepBig = ['id', 'eom', 'size_grp', 'permno', 'permco', 'adjfct', 'shares', 
+             'me', 'me_lag1', 'sic', 'ff49', 'me_company', 'dolvol', 'ret',
+             'ret_exc', 'ret_lag_dif', 'ret_exc_lead1m',
+             'enterprise_value', 'book_equity', 'sales', 'net_income', 'bidask',
+             'prc_high', 'prc_low', 'tvol'] + lReplication
+
+# Only NYSE stocks
+dfNyse = dfChar[(dfChar['crsp_exchcd'] == 1) | (dfChar['comp_exchg'] == 11)].copy()
+dfNyse['eom'] = pd.to_datetime(dfNyse['eom'], format='%Y%m%d')
+dfNyse['year'] = dfNyse['eom'].dt.year
+dfNyse = dfNyse[dfNyse['year'] <= 2020]
+dfNyse = dfNyse[dfNyse['year'] >= 1970]
+dfNyse = dfNyse[(dfNyse['size_grp'] == 'small') | (dfNyse['size_grp'] == 'large') | (dfNyse['size_grp'] == 'mega')]
+dfNyse = dfNyse[dfNyse['source_crsp'] == 1]
+dfNyse.dropna(subset=['me_lag1'], inplace=True)
+dfNyse = dfNyse[lKeepBig]
+dfNyse.sort_values(by=['id', 'eom'], inplace=True)
+
+# Drop rows with > 57 missing features
+dfNyse['missing_count'] = dfNyse[lReplication].isnull().sum(axis=1)
+dfNyse = dfNyse[dfNyse['missing_count'] <= 77]
+
+# Lag features (prevent lookahead bias)
+for feature in lReplication:
+    dfNyse[feature] = dfNyse.groupby('id')[feature].shift(1)
+
+# Compute cross-sectional rank each month
+for feature in lReplication:
+    dfNyse[feature] = dfNyse.groupby(['eom'])[feature].rank()
+    
+# Map to [0,1] interval
+for feature in lReplication:
+    dfNyse[feature] = dfNyse.groupby(['eom'])[feature].transform(
+        lambda x: minmax_scale(x.astype(float)))
+
+# Set missing values to 0.5
+dfNyse[lReplication] = dfNyse[lReplication].fillna(0.5)
+
+# Drop helper columns
+dfNyse = dfNyse.drop(columns=['missing_count'])
+
+# Export final dataset
+dfNyse.to_csv('nyse_data.csv', index=False)
+
 
 ###########################################################
 ### Downloaded anomalies for replication check

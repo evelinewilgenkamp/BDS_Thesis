@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 """
-RandomForestPredictions.py
+FnnPredictions.py
 
 Purpose:
-    Predict returns of NYSE, AMEX, NASDAQ using random forest
+    Predict returns of NYSE, AMEX, NASDAQ using FNNs
     Train: 1991-2000, valid: 2001-2002, test:2003-2020, rolling window
 
 Version:
-    Final
+    in progress
     
 Date:
     27-06-2023
@@ -28,9 +28,10 @@ import os
 from datetime import date, timedelta, datetime
 from dateutil.parser import parse
 
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.inspection import permutation_importance
-from sklearn.metrics import r2_score
+# NN imports
+import keras_tuner as kt
+import tensorflow as tf
+from tensorflow import keras
 
 ###########################################################
 ### WORKING DIRECTORY
@@ -144,123 +145,22 @@ dfData = dfData.copy()
 
 ###########################################################
 ### FUNCTIONS
-def tuneRandomForest(X_train, y_train, X_valid, y_valid):
-    # Initialize parameters to tune (similar to Gu et al)
-    params_grid = {'max_depth':[1, 2, 3, 4, 5],
-                   'max_features':[10, 25, 50, 100, 200]}
-    
-    # Initializations the random forest regressor
-    rfg = RandomForestRegressor(n_estimators=300,
-                                random_state=69,
-                                n_jobs=6)
-    
-    best_score = np.NINF
-    best_params = None
-    
-    # Loop through the grid and find best combinations
-    for max_depth in params_grid['max_depth']:
-        for max_features in params_grid['max_features']:
-            # Set new parameters
-            rfg.set_params(max_depth=max_depth,
-                           max_features=max_features)
-            
-            # Fit on the training data
-            t0 = time.time()
-            rfg.fit(X=X_train, y=y_train)
-            t1 = time.time()
-            total = t1-t0
-            
-            # Evaluate performance on validation set
-            score = rfg.score(X=X_valid, y=y_valid)
-            print(f'model maxdepth {max_depth} and feat {max_features} took {total} seconds with score {score}')
-            
-            
-            # Store params if best model so far
-            if score > best_score:
-                best_score = score
-                best_params = {'max_depth':max_depth, 'max_features':max_features}
-                
-    return best_params
-
-def predictRandomForest(X_train, y_train, X_test, y_test, best_params):
-    # Initializations the random forest regressor
-    best_rfg = RandomForestRegressor(n_estimators=300,
-                                     random_state=69,
-                                     n_jobs=5,
-                                     max_depth=best_params['max_depth'],
-                                     max_features=best_params['max_features'])
-    
-    # Fit on the training set
-    best_rfg.fit(X=X_train, y=y_train)
-    
-    # Predict on the test set (one year of observations)
-    y_pred = best_rfg.predict(X_test)
-    
-    return y_pred
-
-    
-###########################################################
-### PREDICTIONS
+##################
 # Set initial train, valid, test split
-train_start = 1999
-train_end = 2008
-valid_start = 2009
-valid_end = 2010
-test_start = 2011
+train_start = 1991
+train_end = 2000
+valid_start = 2001
+valid_end = 2002
+test_start = 2003
 test_end = 2020
 
-# List to store the predictions and best params in
-lParams = []
-lPred = []
+# Prepare train, validation, and test tests
+dfTest = dfData[dfData['year'] == test_start]
 
-# Expanding window loop
-for year in range(test_start, test_end+1):
-    print(f'Current prediction iteration: {year}')
-    print(f'Training parameters: train start {train_start}, train end {train_end}, valid start {valid_start}, valid end {valid_end}, test set {year}')
-    
-    # Prepare train, validation, and test tests
-    dfTest = dfData[dfData['year'] == year]
-    
-    X_train = dfData[(dfData['year'] >= train_start) & (dfData['year'] <= train_end)][lColumns]
-    y_train = dfData[(dfData['year'] >= train_start) & (dfData['year'] <= train_end)]['ret_exc']
-    X_valid = dfData[(dfData['year'] >= valid_start) & (dfData['year'] <= valid_end)][lColumns]
-    y_valid = dfData[(dfData['year'] >= valid_start) & (dfData['year'] <= valid_end)]['ret_exc']
-    X_test = dfTest[lColumns]
-    y_test = dfTest['ret_exc']
-    
-    print(f'Tuning started for iteration: {year}')
-    
-    # Find the best parameters for the model refit
-    best_params = tuneRandomForest(X_train, y_train, X_valid, y_valid)
-    best_params['year'] = year
-    lParams.append(best_params)
-    
-    print(f'Tuning finished for iteration: {year}')
-    print(f'Best params for year {year} are {best_params}')
-    
-    print(f'Predictions started for iteration: {year}')
-    
-    # Fit the model for the prediction year at hand
-    y_pred = predictRandomForest(X_train, y_train, X_test, y_test, best_params)
-    
-    # Get indices and dates to add to predictions
-    dfPred = dfTest[['id', 'eom']].copy()
-    dfPred['y_pred'] = y_pred
-    
-    # Store the predictions in the list
-    lPred.append(dfPred)
-    
-    # Export the predictions
-    dfPred.to_csv(f'rf_pred_{year}.csv', index=False)
-    
-    # Set new rolling window
-    train_start = train_start + 1
-    train_end = train_end + 1
-    valid_start = valid_start + 1
-    valid_end = valid_end + 1
+X_train = dfData[(dfData['year'] >= train_start) & (dfData['year'] <= train_end)][lColumns]
+y_train = dfData[(dfData['year'] >= train_start) & (dfData['year'] <= train_end)]['ret_exc']
+X_valid = dfData[(dfData['year'] >= valid_start) & (dfData['year'] <= valid_end)][lColumns]
+y_valid = dfData[(dfData['year'] >= valid_start) & (dfData['year'] <= valid_end)]['ret_exc']
+X_test = dfTest[lColumns]
+y_test = dfTest['ret_exc']
 
-
-# backtesting
-r2_test = r2_score(y_test, y_pred)
-dfPred[dfPred['y_pred'] == dfPred['y_pred'].quantile(0.9)]
-dfPred[dfPred['y_pred'] == dfPred['y_pred'].quantile(0.1)]
