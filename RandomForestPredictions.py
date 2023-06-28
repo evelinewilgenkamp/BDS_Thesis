@@ -88,7 +88,7 @@ dfMacro['dfy'] = dfMacro['BAA'] - dfMacro['AAA']
 # List to keep
 lKeep = ['dp', 'ep', 'b/m', 'ntis', 'tbl', 'tms', 'dfy', 'svar', 'year', 'month']
 dfMacro = dfMacro[lKeep]
-# Lag by 1 month (lookahead bias)
+# List of macro variables
 lMacro = ['dp', 'ep', 'b/m', 'ntis', 'tbl', 'tms', 'dfy', 'svar']
 
 # Merges
@@ -213,7 +213,7 @@ test_end = 2020
 lParams = []
 lPred = []
 
-# Expanding window loop
+# Rolling window loop
 for year in range(test_start, test_end+1):
     print(f'Current prediction iteration: {year}')
     print(f'Training parameters: train start {train_start}, train end {train_end}, valid start {valid_start}, valid end {valid_end}, test set {year}')

@@ -81,7 +81,7 @@ dfMacro['dfy'] = dfMacro['BAA'] - dfMacro['AAA']
 # List to keep
 lKeep = ['dp', 'ep', 'b/m', 'ntis', 'tbl', 'tms', 'dfy', 'svar', 'year', 'month']
 dfMacro = dfMacro[lKeep]
-# Lag by 1 month (lookahead bias)
+# List of macro variables
 lMacro = ['dp', 'ep', 'b/m', 'ntis', 'tbl', 'tms', 'dfy', 'svar']
 
 # Merges
