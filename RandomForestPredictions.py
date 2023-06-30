@@ -134,6 +134,8 @@ dfData.drop(lMacro, axis=1, inplace=True)
 
 lColumns = dfData.columns.tolist()
 lColumns = lColumns[32:]
+lColumns.insert(94, 'market_equity')
+lColumns.insert(95, 'prc')
 lColumns.remove('year')
 lColumns.remove('month')
         

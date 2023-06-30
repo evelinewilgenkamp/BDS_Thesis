@@ -37,7 +37,15 @@ from tensorflow.keras import layers
 from tensorflow.keras import regularizers
 from tensorflow.keras.callbacks import EarlyStopping
 
+# Tensorflow settings
+np.random.seed(69)
 tf.random.set_seed(69)
+tf.config.set_visible_devices([], 'GPU') #dataset too big for gpu ram
+
+# SHAP settings (to allow for batch normalization)
+import shap
+shap.explainers._deep.deep_tf.op_handlers["AddV2"] = shap.explainers._deep.deep_tf.passthrough
+
 
 ###########################################################
 ### WORKING DIRECTORY
@@ -131,6 +139,8 @@ dfData.drop(lMacro, axis=1, inplace=True)
 
 lColumns = dfData.columns.tolist()
 lColumns = lColumns[32:]
+lColumns.insert(94, 'market_equity')
+lColumns.insert(95, 'prc')
 lColumns.remove('year')
 lColumns.remove('month')
         
@@ -148,7 +158,7 @@ def modelBuilderNN3(pen, lr):
     model = keras.Sequential()
 
     # Input layer with batch normalization
-    model.add(layers.Input(shape=1107))
+    model.add(layers.Input(shape=1109))
     model.add(layers.BatchNormalization())
 
     # Three ReLu layers with batch normalization
@@ -181,7 +191,7 @@ def modelBuilderNN4(pen, lr):
     model = keras.Sequential()
 
     # Input layer with batch normalization
-    model.add(layers.Input(shape=1107))
+    model.add(layers.Input(shape=1109))
     model.add(layers.BatchNormalization())
 
     # Three ReLu layers with batch normalization
@@ -218,7 +228,7 @@ def modelBuilderNN5(pen, lr):
     model = keras.Sequential()
 
     # Input layer with batch normalization
-    model.add(layers.Input(shape=1107))
+    model.add(layers.Input(shape=1109))
     model.add(layers.BatchNormalization())
 
     # Three ReLu layers with batch normalization
@@ -305,7 +315,7 @@ def tuneNeuralNet(X_train, y_train, X_valid, y_valid, X_test, iLayer):
 # y_pred = predictNeuralNet(X_train, y_train, X_valid, y_valid, X_test, y_test, 
 #                           best_params, iLayer)
 def predictNeuralNet(X_train, y_train, X_valid, y_valid, X_test, y_test, 
-                     best_params, iLayer):
+                     best_params, iLayer, importance=False):
     # 3 layer NN
     if iLayer == 3:
         model = modelBuilderNN3(pen=best_params['pen'], lr=best_params['lr'])
@@ -336,17 +346,25 @@ def predictNeuralNet(X_train, y_train, X_valid, y_valid, X_test, y_test,
     # Get predictions
     y_pred = model.predict(X_test)[:, 0]
     
-    return y_pred
+    # Get SHAP values (for last model)
+    if importance == True:
+        bg = X_train.sample(100)
+        deepexplainer = shap.DeepExplainer(model, bg)
+        shaps = deepexplainer.shap_values(X_test[:1000].values)
+    else:
+        shaps = None
+    
+    return y_pred, shaps
     
 
 ###########################################################
 ### PREDICTIONS
 # Set initial train, valid, test split
-train_start = 1992
-train_end = 2001
-valid_start = 2002
-valid_end = 2003
-test_start = 2004
+train_start = 1991
+train_end = 2000
+valid_start = 2001
+valid_end = 2002
+test_start = 2003
 test_end = 2020
 
 # List of neural net layers
@@ -355,7 +373,12 @@ lLayers = [3]
 # List to store the predictions and best params in
 lParamsNN3 = []
 lParamsNN4 = []
-lParamsNN5 = []
+lParamsNN5 = [] 
+
+# List to store SHAP values
+lShap = []
+
+# Store the variable importance measures
 
 # Rolling window loop
 for year in range(test_start, test_end+1):
@@ -392,17 +415,22 @@ for year in range(test_start, test_end+1):
         print(f'Best NN{layer} params for year {year} are {best_params}')
         print(f'NN{layer} predictions started for iteration: {year}')
         # 5 sets of predictions (ensemble) to average
-        y_pred_test_2 = predictNeuralNet(X_train, y_train, X_valid, y_valid, 
-                                         X_test, y_test, best_params, layer)
+        y_pred_test_2, shaps = predictNeuralNet(X_train, y_train, X_valid, 
+                                                y_valid, X_test, y_test, 
+                                                best_params, layer)
         
-        y_pred_test_3 = predictNeuralNet(X_train, y_train, X_valid, y_valid, 
-                                         X_test, y_test, best_params, layer)
+        y_pred_test_3, shaps = predictNeuralNet(X_train, y_train, X_valid, 
+                                                y_valid, X_test, y_test, 
+                                                best_params, layer)
         
-        y_pred_test_4 = predictNeuralNet(X_train, y_train, X_valid, y_valid, 
-                                         X_test, y_test, best_params, layer)
+        y_pred_test_4, shaps = predictNeuralNet(X_train, y_train, X_valid,
+                                                y_valid, X_test, y_test,
+                                                best_params, layer)
         
-        y_pred_test_5 = predictNeuralNet(X_train, y_train, X_valid, y_valid, 
-                                         X_test, y_test, best_params, layer)
+        y_pred_test_5, shaps = predictNeuralNet(X_train, y_train, X_valid, 
+                                                y_valid,  X_test, y_test, 
+                                                best_params, layer, 
+                                                importance=True)
         
         # Compute average prediction (variance reduction)
         y_pred_avg = (y_pred_test_1 + y_pred_test_2 + y_pred_test_3 + y_pred_test_4 + y_pred_test_5) / 5
@@ -417,9 +445,15 @@ for year in range(test_start, test_end+1):
         # Test set R^2
         score = r2_score(y_test, y_pred_avg)
         print(f'For year {year} NN{layer} OOS R^2 is {score}')
+        
+        # Save SHAP values
+        dfShap = pd.DataFrame(shaps[0], columns=lColumns)
+        dfShap = dfShap.abs().mean()
+        lShap.append(dfShap)
     
     # Set new rolling window
     train_start = train_start + 1
     train_end = train_end + 1
     valid_start = valid_start + 1
     valid_end = valid_end + 1
+
