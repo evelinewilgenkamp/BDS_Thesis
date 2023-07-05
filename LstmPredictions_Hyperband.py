@@ -25,6 +25,7 @@ import statsmodels.formula.api as smf
 import statsmodels.api as sm
 import time
 import os
+import random
 from datetime import date, timedelta, datetime
 from dateutil.parser import parse
 from sklearn.metrics import r2_score
@@ -36,8 +37,10 @@ from tensorflow import keras
 from tensorflow.keras import layers
 from tensorflow.keras import regularizers
 from tensorflow.keras.callbacks import EarlyStopping
+from keras_tuner.tuners import Hyperband, BayesianOptimization
 
 # Tensorflow settings
+random.seed(69)
 np.random.seed(69)
 tf.random.set_seed(69)
 tf.config.set_visible_devices([], 'GPU') #dataset too big for gpu ram
@@ -157,29 +160,28 @@ def r2oos(y_test, y_pred_test):
     denominator = (y_test ** 2).sum()
     r2 = 1 - (numerator / denominator)
     return r2
-
+    
 
 # model = modelBuilderNN3(pen, lr)
-def modelBuilderNN3(pen, lr):
+def modelBuilderLSTM2(hp):
     # FNN so sequential model
     model = keras.Sequential()
 
-    # Input layer with batch normalization
-    model.add(layers.Input(shape=1109))
-    model.add(layers.BatchNormalization())
+    # Tuning parameters
+    l1_regularization = hp.Choice('l1_regularization', values=[0.001, 0.0001, 0.00001])
+    learning_rate = hp.Choice('learning_rate', values=[0.001, 0.01])
 
-    # Three ReLu layers with batch normalization
-    model.add(layers.Dense(units=32, 
-                           activation='relu',
-                           kernel_regularizer=regularizers.l1(pen)))
+    # Two Tanh layers with batch normalization
+    model.add(layers.LSTM(units=32, 
+                          input_shape=(1, 1109),
+                          activation='tanh',
+                          recurrent_activation='sigmoid',
+                          kernel_regularizer=regularizers.l1(l1_regularization)))
     model.add(layers.BatchNormalization())
-    model.add(layers.Dense(units=16, 
-                           activation='relu',
-                           kernel_regularizer=regularizers.l1(pen)))
-    model.add(layers.BatchNormalization())
-    model.add(layers.Dense(units=8, 
-                           activation='relu',
-                           kernel_regularizer=regularizers.l1(pen)))
+    model.add(layers.LSTM(units=16, 
+                          activation='tanh',
+                          recurrent_activation='sigmoid',
+                          kernel_regularizer=regularizers.l1(l1_regularization)))
     model.add(layers.BatchNormalization())
     
     # Output layer
@@ -187,36 +189,36 @@ def modelBuilderNN3(pen, lr):
     
     # Compile model
     model.compile(
-        optimizer=keras.optimizers.Adam(learning_rate=lr),
-        loss='mse')
+        optimizer=keras.optimizers.Adam(learning_rate=learning_rate),
+        loss='mse', metrics=['mse'])
 
     return model
 
-# model = modelBuilderNN4(pen, lr)
-def modelBuilderNN4(pen, lr):
+# model = modelBuilderNN3(pen, lr)
+def modelBuilderLSTM3(hp):
     # FNN so sequential model
     model = keras.Sequential()
 
-    # Input layer with batch normalization
-    model.add(layers.Input(shape=1109))
-    model.add(layers.BatchNormalization())
+    # Tuning parameters
+    l1_regularization = hp.Choice('l1_regularization', values=[0.001, 0.0001, 0.00001])
+    learning_rate = hp.Choice('learning_rate', values=[0.001, 0.01])
 
-    # Three ReLu layers with batch normalization
-    model.add(layers.Dense(units=32, 
-                           activation='relu',
-                           kernel_regularizer=regularizers.l1(pen)))
+    # Two Tanh layers with batch normalization
+    model.add(layers.LSTM(units=32, 
+                          input_shape=(1, 1109),
+                          activation='tanh',
+                          recurrent_activation='sigmoid',
+                          kernel_regularizer=regularizers.l1(l1_regularization)))
     model.add(layers.BatchNormalization())
-    model.add(layers.Dense(units=16, 
-                           activation='relu',
-                           kernel_regularizer=regularizers.l1(pen)))
+    model.add(layers.LSTM(units=16, 
+                          activation='tanh',
+                          recurrent_activation='sigmoid',
+                          kernel_regularizer=regularizers.l1(l1_regularization)))
     model.add(layers.BatchNormalization())
-    model.add(layers.Dense(units=8, 
-                           activation='relu',
-                           kernel_regularizer=regularizers.l1(pen)))
-    model.add(layers.BatchNormalization())
-    model.add(layers.Dense(units=4, 
-                           activation='relu',
-                           kernel_regularizer=regularizers.l1(pen)))
+    model.add(layers.LSTM(units=8, 
+                          activation='tanh',
+                          recurrent_activation='sigmoid',
+                          kernel_regularizer=regularizers.l1(l1_regularization)))
     model.add(layers.BatchNormalization())
     
     # Output layer
@@ -224,145 +226,11 @@ def modelBuilderNN4(pen, lr):
     
     # Compile model
     model.compile(
-        optimizer=keras.optimizers.Adam(learning_rate=lr),
-        loss='mse')
+        optimizer=keras.optimizers.Adam(learning_rate=learning_rate),
+        loss='mse', metrics=['mse'])
 
     return model
 
-# model = modelBuilderNN5(pen, lr)
-def modelBuilderNN5(pen, lr):
-    # FNN so sequential model
-    model = keras.Sequential()
-
-    # Input layer with batch normalization
-    model.add(layers.Input(shape=1109))
-    model.add(layers.BatchNormalization())
-
-    # Three ReLu layers with batch normalization
-    model.add(layers.Dense(units=32, 
-                           activation='relu',
-                           kernel_regularizer=regularizers.l1(pen)))
-    model.add(layers.BatchNormalization())
-    model.add(layers.Dense(units=16, 
-                           activation='relu',
-                           kernel_regularizer=regularizers.l1(pen)))
-    model.add(layers.BatchNormalization())
-    model.add(layers.Dense(units=8, 
-                           activation='relu',
-                           kernel_regularizer=regularizers.l1(pen)))
-    model.add(layers.BatchNormalization())
-    model.add(layers.Dense(units=4, 
-                           activation='relu',
-                           kernel_regularizer=regularizers.l1(pen)))
-    model.add(layers.BatchNormalization())
-    model.add(layers.Dense(units=2, 
-                           activation='relu',
-                           kernel_regularizer=regularizers.l1(pen)))
-    model.add(layers.BatchNormalization())
-    
-    # Output layer
-    model.add(layers.Dense(1, activation='linear'))
-    
-    # Compile model
-    model.compile(
-        optimizer=keras.optimizers.Adam(learning_rate=lr),
-        loss='mse')
-
-    return model
-
-# best_params = tuneNeuralNet(X_train, y_train, X_valid, y_valid)
-def tuneNeuralNet(X_train, y_train, X_valid, y_valid, X_test, iLayer):
-    # Tuning grid
-    params_grid = {'lPenalty':[0.001, 0.0001, 0.00001],
-                   'lLearnRate':[0.01, 0.001]}
-
-    # Scores
-    best_score = np.NINF
-    best_params = None
-
-    for lr in params_grid['lLearnRate']:
-        for pen in params_grid['lPenalty']:
-            # Initialize correct model
-            if iLayer == 3:
-                model = modelBuilderNN3(pen=pen, lr=lr)
-            elif iLayer == 4:
-                model = modelBuilderNN4(pen=pen, lr=lr)
-            elif iLayer == 5:
-                model = modelBuilderNN5(pen=pen, lr=lr)
-            
-            early_stopping = EarlyStopping(monitor='val_loss', patience=5, 
-                                           restore_best_weights=True)
-
-            # Fit model
-            model.fit(X_train, y_train, epochs=100, batch_size=3000,
-                      validation_data=(X_valid, y_valid),
-                      callbacks=[early_stopping],
-                      verbose=0)
-
-            # Predictions on validation set
-            y_pred_valid = model.predict(X_valid)[:, 0]
-
-            # Validation set R^2
-            score = r2_score(y_valid, y_pred_valid)
-            
-            # Backtesting print
-            #print(f'Iteration with learning rate {lr} and l1 {pen} gave R^2 {score}')
-            
-            if score > best_score:
-                # Set new best params
-                best_score = score
-                best_params = {'lr':lr, 'pen':pen}
-                
-                # Already do predictions for best params, saves retraining once
-                y_pred_test = model.predict(X_test)[:, 0]
-                
-    # Return best parameters
-    return best_params, y_pred_test
-
-# y_pred = predictNeuralNet(X_train, y_train, X_valid, y_valid, X_test, y_test, 
-#                           best_params, iLayer, importance=False)
-def predictNeuralNet(X_train, y_train, X_valid, y_valid, X_test, y_test, 
-                     best_params, iLayer, importance=False):
-    # 3 layer NN
-    if iLayer == 3:
-        model = modelBuilderNN3(pen=best_params['pen'], lr=best_params['lr'])
-        early_stopping = EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
-        model.fit(X_train, y_train, epochs=100, batch_size=3000,
-                  validation_data=(X_valid, y_valid),
-                  callbacks=[early_stopping],
-                  verbose=0)
-        
-    # 4 layer NN
-    elif iLayer == 4:
-        model = modelBuilderNN4(pen=best_params['pen'], lr=best_params['lr'])
-        early_stopping = EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
-        model.fit(X_train, y_train, epochs=100, batch_size=3000,
-                  validation_data=(X_valid, y_valid),
-                  callbacks=[early_stopping],
-                  verbose=0)
-        
-    # 5 layer NN
-    elif iLayer == 5:
-        model = modelBuilderNN5(pen=best_params['pen'], lr=best_params['lr'])
-        early_stopping = EarlyStopping(monitor='val_loss', patience=5, restore_best_weights=True)
-        model.fit(X_train, y_train, epochs=100, batch_size=3000,
-                  validation_data=(X_valid, y_valid),
-                  callbacks=[early_stopping],
-                  verbose=0)
-
-    # Get predictions
-    y_pred = model.predict(X_test)[:, 0]
-    
-    # Get SHAP values (for last model)
-    if importance == True:
-        bg = X_train.sample(100)
-        deepexplainer = shap.DeepExplainer(model, bg)
-        shaps = deepexplainer.shap_values(X_test.sample(1000).values)
-    else:
-        shaps = None
-    
-    return y_pred, shaps
-    
 
 ###########################################################
 ### PREDICTIONS
@@ -375,7 +243,7 @@ test_start = 2003
 test_end = 2020
 
 # List of neural net layers
-lLayers = [5]
+lLayers = [3]
 
 # List to store the predictions and best params in
 lParamsNN3 = []
@@ -393,10 +261,13 @@ for year in range(test_start, test_end+1):
     dfTest = dfData[dfData['year'] == year]
     
     X_train = dfData[(dfData['year'] >= train_start) & (dfData['year'] <= train_end)][lColumns]
+    X_train = X_train.values.reshape(X_train.shape[0], 1, X_train.shape[1])
     y_train = dfData[(dfData['year'] >= train_start) & (dfData['year'] <= train_end)]['ret_exc']
     X_valid = dfData[(dfData['year'] >= valid_start) & (dfData['year'] <= valid_end)][lColumns]
+    X_valid = X_valid.values.reshape(X_valid.shape[0], 1, X_valid.shape[1])
     y_valid = dfData[(dfData['year'] >= valid_start) & (dfData['year'] <= valid_end)]['ret_exc']
     X_test = dfTest[lColumns]
+    X_test = X_test.values.reshape(X_test.shape[0], 1, X_test.shape[1])
     y_test = dfTest['ret_exc']
     
     # Loop through the neural nets
@@ -404,10 +275,22 @@ for year in range(test_start, test_end+1):
         print(f'NN{layer} tuning started for iteration: {year}')
         
         # Find the best parameters
-        best_params, y_pred_test_1 = tuneNeuralNet(X_train, y_train, X_valid, 
-                                                   y_valid, X_test, 
-                                                   iLayer=layer)
-        best_params['year'] = year
+        early_stopping = EarlyStopping(monitor='val_mse', patience=5, restore_best_weights=True)
+
+        tuner = BayesianOptimization(
+            modelBuilderLSTM3,
+            objective='val_mse',
+            max_trials=6,
+            executions_per_trial=1,
+            directory='keras_tuner',
+            project_name='LSTM3_tuner',
+            overwrite=True
+        )
+
+        tuner.search(X_train, y_train, epochs=100, batch_size=3000,
+                     validation_data=(X_valid, y_valid),
+                     callbacks=[early_stopping])
+    
         
         if layer == 3:
             lParamsNN3.append(best_params)
@@ -462,15 +345,6 @@ for year in range(test_start, test_end+1):
     valid_start = valid_start + 1
     valid_end = valid_end + 1
 
-
-# R2 values
-lFiles = []
-for year in range(test_start, test_end+1):
-    lFiles.append(f'NN3_pred_{year}_3000batch.csv')
-
-dfPred = pd.concat(map(pd.read_csv, lFiles))
-dfPred['eom'] = pd.to_datetime(dfPred['eom'], format='%Y-%m-%d')
-dfPred = dfPred.merge(dfData[['id', 'eom', 'ret_exc']], on=['id','eom'])
 
 
 
